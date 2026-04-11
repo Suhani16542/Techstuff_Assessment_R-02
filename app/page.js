@@ -2,255 +2,292 @@
 
 import { useEffect, useState } from "react";
 
-export default function PokemonPage() {
-  const [pokemon, setPokemon] = useState([]);
-  const [selectedPokemon, setSelectedPokemon] = useState(null);
+export default function PokePage() {
+  const [list, setList] = useState([]);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [count, setCount] = useState(200);
+
+  const [pokemon, setPokemon] = useState(null);
+  const [type, setType] = useState("");
+
+  const [isListLoading, setIsListLoading] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+
+  const [errMsg, setErrMsg] = useState("");
 
   const limit = 10;
 
   useEffect(() => {
-    fetchData();
+    fetchList();
   }, [page]);
 
-  const fetchData = async () => {
+  const fetchList = async () => {
+    setIsListLoading(true);
+    setErrMsg("");
+
     try {
       const offset = (page - 1) * limit;
 
-      const res = await fetch(
+      const response = await fetch(
         `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`
       );
 
-      const data = await res.json();
+      if (!response.ok) throw new Error();
 
-      setPokemon(data.results);
+      const data = await response.json();
 
-      // ✅ TOTAL LIMIT 200
-      setTotal(Math.min(data.count, 200));
-
-      if (data.results.length > 0) {
-        fetchPokemonDetails(data.results[1]?.url || data.results[0].url);
-      }
-    } catch (err) {
-      console.log("Error fetching data", err);
+      setList(data.results);
+      setCount(200);
+    } catch {
+      setErrMsg("Failed to fetch Pokémon list");
+    } finally {
+      setIsListLoading(false);
     }
   };
 
-  const fetchPokemonDetails = async (url) => {
+  const fetchDetails = async (url) => {
+    setIsDetailLoading(true);
+    setErrMsg("");
+
     try {
-      const res = await fetch(url);
-      const data = await res.json();
-      setSelectedPokemon(data);
-    } catch (error) {
-      console.log(error);
+      const response = await fetch(url);
+
+      if (!response.ok) throw new Error();
+
+      const data = await response.json();
+
+      setPokemon(data);
+      setType(data.types?.[0]?.type?.name || "");
+    } catch {
+      setErrMsg("Failed to fetch Pokémon details");
+    } finally {
+      setIsDetailLoading(false);
     }
   };
 
-  const totalPages = Math.ceil(total / limit);
+  const pages = Math.ceil(count / limit);
 
   return (
     <div
       style={{
-        background: "#ffffff",
-        minHeight: "100vh",
+        display: "flex",
+        gap: "40px",
         padding: "20px",
-        fontFamily: "Arial, sans-serif",
+        backgroundColor: "#ffffff",
+        color: "#000000",
+        minHeight: "100vh",
       }}
     >
+      {/* LEFT PANEL */}
+      <div>
+        <h2 style={{ color: "#000000", marginBottom: "10px" }}>
+          Pokémon Table
+        </h2>
+
+        {isListLoading ? (
+          <p>Loading...</p>
+        ) : errMsg ? (
+          <p style={{ color: "red" }}>{errMsg}</p>
+        ) : (
+          <>
+            <table
+              style={{
+                borderCollapse: "collapse",
+                backgroundColor: "#ffffff",
+                color: "#000000",
+                width: "500px",
+                tableLayout: "fixed",
+                border: "1px solid #000",
+              }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      width: "100px",
+                      textAlign: "center",
+                      border: "1px solid #000",
+                      padding: "8px",
+                    }}
+                  >
+                    Sr. No.
+                  </th>
+
+                  <th
+                    style={{
+                      width: "400px",
+                      textAlign: "left",
+                      border: "1px solid #000",
+                      padding: "8px",
+                    }}
+                  >
+                    Poke Name
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {list.map((p, idx) => (
+                  <tr key={p.name}>
+                    <td
+                      style={{
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        border: "1px solid #000",
+                        padding: "8px",
+                      }}
+                    >
+                      {(page - 1) * limit + idx + 1}
+                    </td>
+
+                    <td
+                      style={{
+                        color: "#000000",
+                        cursor: "pointer",
+                        textTransform: "capitalize",
+                        paddingLeft: "15px",
+                        border: "1px solid #000",
+                        paddingTop: "8px",
+                        paddingBottom: "8px",
+                      }}
+                      onClick={() => fetchDetails(p.url)}
+                    >
+                      {p.name}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div
+              style={{
+                marginTop: "10px",
+                color: "#000000",
+                width: "500px",
+                display: "flex",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>Total: 200</span>
+
+              <div>
+                <button
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={page === 1}
+                  style={{ color: "#000000" }}
+                >
+                  Prev
+                </button>
+
+                <span style={{ margin: "0 10px" }}>{page}</span>
+
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page === pages}
+                  style={{ color: "#000000" }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* RIGHT PANEL */}
       <div
         style={{
-          maxWidth: "1000px",
-          margin: "0 auto",
-          display: "flex",
-          gap: "25px",
+          minWidth: "260px",
+          border: "1px solid #000",
+          padding: "15px",
+          backgroundColor: "#ffffff",
+          color: "#000000",
         }}
       >
-        {/* LEFT SIDE TABLE */}
-        <div style={{ width: "55%" }}>
-          <h1
-            style={{
-              fontSize: "28px",
-              marginBottom: "15px",
-              fontWeight: "700",
-              color: "#1e293b",
-            }}
-          >
-            Pokémon Table
-          </h1>
+        <h2 style={{ color: "#000000" }}>
+          Pokémon Types {pokemon ? `(${pokemon.name})` : ""}
+        </h2>
 
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              border: "1px solid #cfcfcf",
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={thStyle}>Sr. No.</th>
-                <th style={thStyle}>Poke Name</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {pokemon.map((item, index) => (
-                <tr
-                  key={item.name}
-                  onClick={() => fetchPokemonDetails(item.url)}
-                  style={{ cursor: "pointer" }}
+        {isDetailLoading ? (
+          <p>Loading...</p>
+        ) : !pokemon ? (
+          <p>Select a Pokémon</p>
+        ) : (
+          <>
+            <div style={{ marginBottom: "10px" }}>
+              {pokemon.types.map((t) => (
+                <button
+                  key={t.type.name}
+                  onClick={() => setType(t.type.name)}
+                  style={{
+                    marginRight: "6px",
+                    padding: "5px 10px",
+                    border: "1px solid #aaa",
+                    background:
+                      type === t.type.name ? "#ccc" : "#fff",
+                    color: "#000000",
+                  }}
                 >
-                  <td style={tdStyle}>
-                    {(page - 1) * limit + index + 1}
+                  {t.type.name}
+                </button>
+              ))}
+            </div>
+
+            <table
+              style={{
+                borderCollapse: "collapse",
+                width: "100%",
+                backgroundColor: "#ffffff",
+                color: "#000000",
+                border: "1px solid #000",
+              }}
+            >
+              <tbody>
+                <tr>
+                  <td
+                    style={{
+                      border: "1px solid #000",
+                      padding: "8px",
+                    }}
+                  >
+                    Game Indices
                   </td>
 
                   <td
                     style={{
-                      ...tdStyle,
-                      fontWeight: "600",
-                      fontSize: "18px",
-                      textTransform: "capitalize",
+                      border: "1px solid #000",
+                      padding: "8px",
                     }}
                   >
-                    {item.name}
+                    {pokemon.game_indices.length}
                   </td>
                 </tr>
-              ))}
 
-              {/* Empty Rows */}
-              {[...Array(5)].map((_, i) => (
-                <tr key={i + "empty"}>
-                  <td style={{ ...tdStyle, height: "35px" }}></td>
-                  <td style={tdStyle}></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* PAGINATION */}
-          <div
-            style={{
-              marginTop: "10px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "16px",
-            }}
-          >
-            <span>Total: {total}</span>
-
-            <div>
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                style={btnStyle}
-              >
-                Prev.
-              </button>
-
-              <span style={{ margin: "0 10px" }}>{page}</span>
-
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                style={btnStyle}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT SIDE DETAILS */}
-        <div
-          style={{
-            width: "45%",
-            borderLeft: "1px solid #d8d8d8",
-            paddingLeft: "25px",
-          }}
-        >
-          {selectedPokemon && (
-            <>
-              <h1
-                style={{
-                  fontSize: "26px",
-                  fontWeight: "700",
-                  marginBottom: "15px",
-                  textTransform: "capitalize",
-                  color: "#1e293b",
-                }}
-              >
-                Pokémon Types ({selectedPokemon.name})
-              </h1>
-
-              <div
-                style={{
-                  display: "flex",
-                  marginBottom: "15px",
-                  gap: "8px",
-                }}
-              >
-                {selectedPokemon.types.map((item, index) => (
-                  <div
-                    key={index}
+                <tr>
+                  <td
                     style={{
-                      background: "#e5e5e5",
-                      padding: "6px 16px",
-                      fontSize: "14px",
-                      minWidth: "80px",
-                      textAlign: "center",
+                      border: "1px solid #000",
+                      padding: "8px",
                     }}
                   >
-                    {item.type.name}
-                  </div>
-                ))}
-              </div>
+                    Moves
+                  </td>
 
-              <div
-                style={{
-                  borderTop: "1px solid #999",
-                  width: "70%",
-                  marginBottom: "15px",
-                }}
-              ></div>
-
-              <p style={infoText}>
-                Game Indices: {selectedPokemon.game_indices.length}
-              </p>
-
-              <p style={infoText}>
-                Moves: {selectedPokemon.moves.length}
-              </p>
-            </>
-          )}
-        </div>
+                  <td
+                    style={{
+                      border: "1px solid #000",
+                      padding: "8px",
+                    }}
+                  >
+                    {pokemon.moves.length}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </>
+          
+        )}
       </div>
     </div>
   );
 }
-
-const thStyle = {
-  border: "1px solid #cfcfcf",
-  padding: "8px",
-  fontSize: "14px",
-  textAlign: "left",
-};
-
-const tdStyle = {
-  border: "1px solid #cfcfcf",
-  padding: "8px",
-  fontSize: "14px",
-};
-
-const btnStyle = {
-  padding: "4px 8px",
-  border: "none",
-  background: "transparent",
-  fontSize: "14px",
-  cursor: "pointer",
-};
-
-const infoText = {
-  fontSize: "16px",
-  marginBottom: "10px",
-};
